@@ -31,6 +31,15 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/auth', authRoutes);
 app.use('/api', createDeviceRoutes(io));
 
+// Atalho amigável para o Web App Mobile
+app.get('/rastreador', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/rastreador.html'));
+});
+
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/rastreador.html'));
+});
+
 // Rota de status do sistema
 app.get('/api/status', (req, res) => {
   res.json({
