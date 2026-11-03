@@ -108,6 +108,24 @@
         </div>
 
         <div class="user-menu">
+          <a href="/rastreador" target="_blank" class="btn btn-sm btn-outline btn-mobile-nav" title="Abrir Rastreador Mobile">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+            <span>App Mobile</span>
+          </a>
+          <button id="btnUserLocation" class="btn btn-sm btn-outline btn-gps-nav" title="Ver minha localização GPS">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+              <line x1="12" y1="2" x2="12" y2="5"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="5" y2="12"/>
+              <line x1="19" y1="12" x2="22" y2="12"/>
+            </svg>
+            <span id="btnUserLocationText">Meu GPS</span>
+          </button>
           <div class="user-info">
             <span class="user-name" id="userNameLabel">Operador</span>
             <span class="user-role" id="userRoleLabel">Admin</span>
@@ -268,6 +286,17 @@
 
         <!-- Barra flutuante de ações rápidas no mapa -->
         <div class="map-floating-bar">
+          <button id="btnMapLocateMe" class="floating-btn floating-btn-gps" title="Centralizar na minha localização GPS">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="7"/>
+              <circle cx="12" cy="12" r="2"/>
+              <line x1="12" y1="1" x2="12" y2="4"/>
+              <line x1="12" y1="20" x2="12" y2="23"/>
+              <line x1="1" y1="12" x2="4" y2="12"/>
+              <line x1="20" y1="12" x2="23" y2="12"/>
+            </svg>
+            <span>Minha Posição</span>
+          </button>
           <button id="btnFitAll" class="floating-btn" title="Enquadrar todos os veículos">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 3 21 3 21 9"/>
@@ -280,6 +309,18 @@
           <div id="realtimeNotice" class="realtime-badge">
             <span class="pulsing-circle"></span>
             <span id="realtimeMessage">Central Operacional</span>
+          </div>
+        </div>
+
+        <!-- Banner flutuante de status da localização do usuário -->
+        <div id="userLocationBanner" class="user-location-banner hidden">
+          <div class="location-banner-content">
+            <div class="location-beacon"></div>
+            <div class="location-info">
+              <strong>Sua Localização GPS</strong>
+              <span id="userLocationCoords">Obtendo coordenadas...</span>
+            </div>
+            <button id="btnCloseLocationBanner" class="btn-close-banner">&times;</button>
           </div>
         </div>
       </main>
