@@ -124,6 +124,20 @@ const dbMethods = {
   getUserById(id) {
     return db.prepare('SELECT id, username, name, role, created_at FROM users WHERE id = ?').get(id);
   },
+  createUser({ username, password, name, role = 'usuario' }) {
+    const passwordHash = bcrypt.hashSync(password, 10);
+    const stmt = db.prepare(`
+      INSERT INTO users (username, password_hash, name, role)
+      VALUES (?, ?, ?, ?)
+    `);
+    const info = stmt.run(username, passwordHash, name, role);
+    return {
+      id: Number(info.lastInsertRowid),
+      username,
+      name,
+      role
+    };
+  },
 
   // Dispositivos
   getDeviceByToken(token) {

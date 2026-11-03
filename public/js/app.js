@@ -10,7 +10,17 @@ const state = {
   historyPolyline: null,
   historyMarkers: [],
   map: null,
-  socket: null
+  socket: null,
+  // Localização do Operador/Usuário via GPS
+  userLocation: {
+    lat: null,
+    lng: null,
+    accuracy: null,
+    marker: null,
+    circle: null,
+    watchId: null,
+    isTracking: false
+  }
 };
 
 // Inicialização
@@ -70,6 +80,9 @@ function showApp() {
   }
 
   loadDevices();
+
+  // Iniciar solicitação amigável de GPS do usuário após login
+  requestUserLocation(false);
 }
 
 function logout() {
@@ -671,4 +684,175 @@ function initEventListeners() {
       alert('Nenhum dispositivo com coordenadas válidas para enquadrar.');
     }
   });
+
+  // Botões de Localização GPS do Usuário
+  const btnUserLocation = document.getElementById('btnUserLocation');
+  if (btnUserLocation) {
+    btnUserLocation.addEventListener('click', () => {
+      toggleUserLocationTracking(true);
+    });
+  }
+
+  const btnMapLocateMe = document.getElementById('btnMapLocateMe');
+  if (btnMapLocateMe) {
+    btnMapLocateMe.addEventListener('click', () => {
+      requestUserLocation(true);
+    });
+  }
+
+  const btnCloseLocationBanner = document.getElementById('btnCloseLocationBanner');
+  if (btnCloseLocationBanner) {
+    btnCloseLocationBanner.addEventListener('click', () => {
+      document.getElementById('userLocationBanner').classList.add('hidden');
+    });
+  }
+}
+
+// ==========================================
+// Funcionalidade de Localização GPS do Usuário
+// ==========================================
+
+function requestUserLocation(panTo = true) {
+  if (!('geolocation' in navigator)) {
+    alert('Seu navegador não possui suporte para Geolocation (GPS).');
+    return;
+  }
+
+  const btnText = document.getElementById('btnUserLocationText');
+  if (btnText) btnText.textContent = 'Buscando GPS...';
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      updateUserLocation(position.coords, panTo);
+      if (btnText) btnText.textContent = 'Meu GPS (Ativo)';
+      showLocationBanner(position.coords);
+    },
+    (error) => {
+      console.warn('Aviso ao obter GPS:', error.message);
+      if (btnText) btnText.textContent = 'Meu GPS';
+      if (panTo) {
+        alert('Não foi possível obter a sua localização GPS: ' + error.message);
+      }
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
+  );
+}
+
+function toggleUserLocationTracking(panTo = true) {
+  if (state.userLocation.isTracking) {
+    // Parar acompanhamento
+    if (state.userLocation.watchId !== null) {
+      navigator.geolocation.clearWatch(state.userLocation.watchId);
+      state.userLocation.watchId = null;
+    }
+    state.userLocation.isTracking = false;
+    const btnText = document.getElementById('btnUserLocationText');
+    if (btnText) btnText.textContent = 'Meu GPS';
+    const banner = document.getElementById('userLocationBanner');
+    if (banner) banner.classList.add('hidden');
+    notifyRealtimeActivity('Rastreamento da sua posição pausado');
+  } else {
+    // Iniciar acompanhamento contínuo
+    if (!('geolocation' in navigator)) {
+      alert('Geolocalização não disponível no navegador.');
+      return;
+    }
+
+    state.userLocation.isTracking = true;
+    const btnText = document.getElementById('btnUserLocationText');
+    if (btnText) btnText.textContent = 'Meu GPS (Ativo)';
+
+    requestUserLocation(panTo);
+
+    try {
+      state.userLocation.watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          updateUserLocation(position.coords, false);
+          showLocationBanner(position.coords);
+        },
+        (err) => console.warn('Erro contínuo de GPS:', err),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+      );
+    } catch (e) {
+      console.error('Falha ao iniciar watchPosition:', e);
+    }
+  }
+}
+
+function updateUserLocation(coords, panTo = false) {
+  const { latitude, longitude, accuracy } = coords;
+  state.userLocation.lat = latitude;
+  state.userLocation.lng = longitude;
+  state.userLocation.accuracy = accuracy;
+
+  if (!state.map) return;
+
+  const latLng = [latitude, longitude];
+
+  // Ícone especial para o operador/usuário atual
+  const userIcon = L.divIcon({
+    className: 'user-gps-marker',
+    html: `
+      <div class="user-beacon-pulse"></div>
+      <div class="user-beacon-dot"></div>
+      <div class="user-marker-badge">Você (${state.user ? (state.user.name || state.user.username) : 'Operador'})</div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -16]
+  });
+
+  const accuracyText = accuracy ? `±${Math.round(accuracy)}m` : 'N/A';
+  const popupHtml = `
+    <div class="tracker-popup">
+      <h3 style="color:#38bdf8;">📍 Sua Localização Atual</h3>
+      <p><strong>Usuário:</strong> ${state.user ? (state.user.name || state.user.username) : 'Operador Central'}</p>
+      <p><strong>Latitude:</strong> ${latitude.toFixed(6)}</p>
+      <p><strong>Longitude:</strong> ${longitude.toFixed(6)}</p>
+      <p><strong>Precisão do GPS:</strong> ${accuracyText}</p>
+      <p><strong>Horário:</strong> ${new Date().toLocaleTimeString('pt-BR')}</p>
+    </div>
+  `;
+
+  if (state.userLocation.marker) {
+    state.userLocation.marker.setLatLng(latLng);
+    state.userLocation.marker.setPopupContent(popupHtml);
+  } else {
+    state.userLocation.marker = L.marker(latLng, { icon: userIcon, zIndexOffset: 1000 }).addTo(state.map);
+    state.userLocation.marker.bindPopup(popupHtml);
+  }
+
+  // Círculo de precisão
+  if (accuracy && accuracy < 1000) {
+    if (state.userLocation.circle) {
+      state.userLocation.circle.setLatLng(latLng);
+      state.userLocation.circle.setRadius(accuracy);
+    } else {
+      state.userLocation.circle = L.circle(latLng, {
+        radius: accuracy,
+        color: '#0284c7',
+        fillColor: '#38bdf8',
+        fillOpacity: 0.15,
+        weight: 1.5,
+        dashArray: '4, 4'
+      }).addTo(state.map);
+    }
+  }
+
+  if (panTo) {
+    state.map.flyTo(latLng, Math.max(state.map.getZoom(), 15), { duration: 1.2 });
+    state.userLocation.marker.openPopup();
+  }
+
+  notifyRealtimeActivity(`Sua posição GPS atualizada (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
+}
+
+function showLocationBanner(coords) {
+  const banner = document.getElementById('userLocationBanner');
+  const text = document.getElementById('userLocationCoords');
+  if (banner && text) {
+    const acc = coords.accuracy ? ` (Precisão: ±${Math.round(coords.accuracy)}m)` : '';
+    text.textContent = `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}${acc}`;
+    banner.classList.remove('hidden');
+  }
 }
